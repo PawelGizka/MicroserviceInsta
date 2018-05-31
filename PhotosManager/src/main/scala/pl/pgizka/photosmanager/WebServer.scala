@@ -36,6 +36,8 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
 
   def main(args: Array[String]) {
 
+    val s3Manager = new S3Manager()
+
     val cluster = CouchbaseCluster.create("127.0.0.1:8091")
     cluster.authenticate("photosmanager", "adminadmin")
 
@@ -73,7 +75,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
                   CommentDto(friendsMap(commentData.userId), commentData.commentValue, commentData.date)
                 }
                 val likes = photoData.likes.map(id => friendsMap(id))
-                val photoPath = s"SomePathToPhoto ${photoData.id}"
+                val photoPath = s"https://s3.eu-west-2.amazonaws.com/jnpprojectphotos/photo-${photoData.id}.jpg"
                 PhotoDto(photoData.id, photoData.ownerId, photoData.date, photoPath, likes, comments)
               }
 
@@ -98,7 +100,9 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
                   new FileOutputStream(outFile).getChannel().transferFrom(new FileInputStream(file).getChannel, 0, Long.MaxValue )
                   file.delete()
 
-                  complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
+                  s3Manager.upload(outFile, s"photo-${nextId.content()}.jpg")
+
+                  complete(StatusCodes.OK)
                 }
             }
           }
@@ -117,7 +121,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
                     bucket.replace(document)
                   }
 
-                  complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
+                  complete(StatusCodes.OK)
 
                 }
               }
@@ -137,7 +141,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
 
                   bucket.replace(document)
 
-                  complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
+                  complete(StatusCodes.OK)
                 }
               }
             }
