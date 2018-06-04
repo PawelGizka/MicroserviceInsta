@@ -38,8 +38,11 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
 
     val s3Manager = new S3Manager()
 
-    val cluster = CouchbaseCluster.create("127.0.0.1:8091")
-    cluster.authenticate("photosmanager", "adminadmin")
+    println("waiting")
+    Thread.sleep(45000)
+
+    val cluster = CouchbaseCluster.create("couchbase")
+    cluster.authenticate("Administrator", "adminadmin")
 
     // Connect to the bucket and open it
     val bucket = cluster.openBucket("photosmanager")
@@ -83,99 +86,96 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
             }
           }
         } ~
-        post {
-          extractRequest { request =>
-            uploadedFile("photo") {
-              case (metadata, file) =>
-
-                onSuccess(fetchUsersInfo(request)) { userInfo =>
-
-                  val nextId = bucket.counter("photosCounter", 1, 0)
-                  val photoId = "photo:" + nextId.content()
-                  val photo = Photo(nextId.content(), 2, new Date().getTime, List(), List())
-                  bucket.upsert(JsonDocument.create(photoId, JsonObject.fromJson(photo.toJson.toString())))
-
-                  val outFile = new File(s"photo:${nextId.content()}")
-
-                  new FileOutputStream(outFile).getChannel().transferFrom(new FileInputStream(file).getChannel, 0, Long.MaxValue )
-                  file.delete()
-
-                  s3Manager.upload(outFile, s"photo-${nextId.content()}.jpg")
-
-                  complete(StatusCodes.OK)
-                }
-            }
-          }
-        } ~
-        path("like") {
           post {
-            entity(as[LikePostDto]) { likePostDto: LikePostDto =>
-              extractRequest { request =>
-                onSuccess(fetchUsersInfo(request)) { userInfo =>
-
-                  val document = bucket.get(s"photo:${likePostDto.photoId}")
-                  val likes = document.content().getArray("likes")
-                  val contains = 0.until(likes.size()).foldLeft(false)(_ || likes.getInt(_) == userInfo.userId)
-                  if (!contains) {
-                    likes.add(userInfo.userId)
-                    bucket.replace(document)
-                  }
-
-                  complete(StatusCodes.OK)
-
-                }
-              }
-            }
-          }
-        } ~
-        path("comment") {
-          post {
-            entity(as[CommentPostDto]) { commentPostDto: CommentPostDto =>
-              extractRequest { request =>
-                onSuccess(fetchUsersInfo(request)) { userInfo =>
-
-                  val document = bucket.get(s"photo:${commentPostDto.photoId}")
-                  val comments = document.content().getArray("comments")
-                  val comment = Comment(userInfo.userId, commentPostDto.commentValue, new Date().getTime).toJson.toString()
-                  comments.add(JsonObject.fromJson(comment))
-
-                  bucket.replace(document)
-
-                  complete(StatusCodes.OK)
-                }
-              }
-            }
-          }
-        }
-      //TODO this will be in Users microservice
-      } ~
-      pathPrefix("users") {
-        path("info") {
-          get {
             extractRequest { request =>
-              complete(UserInfoDto(1, Seq(FriendDto(1, "pawel", "Gizka"), FriendDto(2, "jan", "kowalski"))))
+              uploadedFile("photo") {
+                case (metadata, file) =>
+
+                  onSuccess(fetchUsersInfo(request)) { userInfo =>
+
+                    val nextId = bucket.counter("photosCounter", 1, 0)
+                    val photoId = "photo:" + nextId.content()
+                    val photo = Photo(nextId.content(), 2, new Date().getTime, List(), List())
+                    bucket.upsert(JsonDocument.create(photoId, JsonObject.fromJson(photo.toJson.toString())))
+
+                    val outFile = new File(s"photo:${nextId.content()}")
+
+                    new FileOutputStream(outFile).getChannel().transferFrom(new FileInputStream(file).getChannel, 0, Long.MaxValue )
+                    file.delete()
+
+                    s3Manager.upload(outFile, s"photo-${nextId.content()}.jpg")
+
+                    complete(StatusCodes.OK)
+                  }
+              }
+            }
+          } ~
+          path("like") {
+            post {
+              entity(as[LikePostDto]) { likePostDto: LikePostDto =>
+                extractRequest { request =>
+                  onSuccess(fetchUsersInfo(request)) { userInfo =>
+
+                    val document = bucket.get(s"photo:${likePostDto.photoId}")
+                    val likes = document.content().getArray("likes")
+                    val contains = 0.until(likes.size()).foldLeft(false)(_ || likes.getInt(_) == userInfo.userId)
+                    if (!contains) {
+                      likes.add(userInfo.userId)
+                      bucket.replace(document)
+                    }
+
+                    complete(StatusCodes.OK)
+
+                  }
+                }
+              }
+            }
+          } ~
+          path("comment") {
+            post {
+              entity(as[CommentPostDto]) { commentPostDto: CommentPostDto =>
+                extractRequest { request =>
+                  onSuccess(fetchUsersInfo(request)) { userInfo =>
+
+                    val document = bucket.get(s"photo:${commentPostDto.photoId}")
+                    val comments = document.content().getArray("comments")
+                    val comment = Comment(userInfo.userId, commentPostDto.commentValue, new Date().getTime).toJson.toString()
+                    comments.add(JsonObject.fromJson(comment))
+
+                    bucket.replace(document)
+
+                    complete(StatusCodes.OK)
+                  }
+                }
+              }
+            }
+          }
+        //TODO this will be in Users microservice
+      } ~
+        pathPrefix("users") {
+          path("info") {
+            get {
+              extractRequest { request =>
+                complete(UserInfoDto(1, Seq(FriendDto(1, "pawel", "Gizka"), FriendDto(2, "jan", "kowalski"))))
+              }
             }
           }
         }
-      }
 
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 8080)
 
     println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
-    StdIn.readLine() // let it run until user presses return
-    bindingFuture
-      .flatMap(_.unbind()) // trigger unbinding from the port
-      .onComplete(_ => system.terminate()) // and shutdown when done
   }
 
   def fetchUsersInfo(request: HttpRequest): Future[UserInfoDto] = {
-    if (request.headers.map(_.name()).contains("token")) {
-      Http().singleRequest(HttpRequest(uri = "http://localhost:8080/users/info"))
+    if (request.headers.map(_.name()).contains("username") && request.headers.map(_.name()).contains("password")) {
+      //TODO tu powinien byc adress mikroserwisu urzytkownikow
+      Http().singleRequest(HttpRequest(HttpMethods.GET, uri = "http://localhost:8080/users/info", headers = request.headers))
         .flatMap{response =>
           response.entity.toStrict(FiniteDuration(5, TimeUnit.SECONDS)).map(_.data.utf8String.parseJson.convertTo[UserInfoDto])
         }
     } else {
-      Future.failed(new Exception("No token in request"))
+      Future.failed(new Exception("No login and password in request"))
     }
   }
 }

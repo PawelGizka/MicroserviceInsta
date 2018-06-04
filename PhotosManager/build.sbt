@@ -15,3 +15,15 @@ libraryDependencies ++= Seq(
   "com.couchbase.client" % "java-client" % "2.5.5",
   "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.1"
 )
+
+// No need to run tests while building jar
+test in assembly := {}
+// Simple and constant jar name
+assemblyJarName in assembly := s"photos-assembly.jar"
+// Merge strategy for assembling conflicts
+assemblyMergeStrategy in assembly := {
+  case PathList("reference.conf") => MergeStrategy.concat
+  case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+  case _ => MergeStrategy.first
+}
+
