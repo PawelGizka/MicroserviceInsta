@@ -12,6 +12,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream" % "2.5.12",
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.12" % Test,
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.337",
+  "com.rabbitmq" % "amqp-client" % "5.2.0",
   "com.couchbase.client" % "java-client" % "2.5.5",
   "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.1",
   "ch.megard" %% "akka-http-cors" % "0.3.0"

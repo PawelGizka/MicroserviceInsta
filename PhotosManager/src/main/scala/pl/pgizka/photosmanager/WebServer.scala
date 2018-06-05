@@ -23,6 +23,13 @@ import pl.pgizka.photosmanager.Data.Photo
 import pl.pgizka.photosmanager.WebServer.fetchUsersInfo
 import spray.json._
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
+import com.rabbitmq.client._
+import java.io.IOException
+import java.nio.file.{Files, Paths}
+import java.util
+
+import com.amazonaws.{AmazonClientException, AmazonServiceException}
+import com.amazonaws.services.s3.model.{CannedAccessControlList, PutObjectRequest}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
@@ -36,8 +43,6 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
   implicit val executionContext = system.dispatcher
 
   def main(args: Array[String]) {
-
-    val s3Manager = new S3Manager()
 
     println("waiting")
     //    Thread.sleep(45000)
@@ -58,6 +63,17 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
     val found = bucket.get("helloworld")
     System.out.println("Couchbase is the best database in the " + found.content.getString("hello"))
 
+    S3.setup()
+
+    import com.rabbitmq.client.ConnectionFactory
+    val factory = new ConnectionFactory
+    val conn = factory.newConnection
+
+    val channel = conn.createChannel
+
+    channel.exchangeDeclare("ech", "direct", true)
+    val queueName = channel.queueDeclare.getQueue
+    channel.queueBind(queueName, "ech", "key")
 
     val route = cors() {
       pathPrefix("photos") {
@@ -104,12 +120,15 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
                     val photo = Photo(nextId.content(), userInfo.userId, new Date().getTime, List(), List())
                     bucket.upsert(JsonDocument.create(photoId, JsonObject.fromJson(photo.toJson.toString())))
 
-                    val outFile = new File(s"photo:${nextId.content()}")
-
-                    new FileOutputStream(outFile).getChannel().transferFrom(new FileInputStream(file).getChannel, 0, Long.MaxValue)
+                    val messageBodyBytes = Files.readAllBytes(Paths.get(file.getAbsolutePath))
                     file.delete()
+                    println(s"photo byte size: ${messageBodyBytes.size}")
 
-                    s3Manager.upload(outFile, s"photo-${nextId.content()}.jpg")
+                    val headers = new util.HashMap[String, Object]()
+                    headers.put("id",  s"photo-${nextId.content()}.jpg")
+
+                    channel.basicPublish("ech", "key",
+                      new AMQP.BasicProperties.Builder().headers(headers).build(), messageBodyBytes)
 
                     println("File uploaded")
 
@@ -164,6 +183,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
     val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
 
     println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+    StdIn.readLine()
   }
 
   def fetchUsersInfo(request: HttpRequest): Future[UserInfoDto] = {
