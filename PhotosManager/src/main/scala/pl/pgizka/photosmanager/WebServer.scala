@@ -22,6 +22,7 @@ import com.couchbase.client.java.query.{N1qlQuery, N1qlQueryRow}
 import pl.pgizka.photosmanager.Data.Photo
 import pl.pgizka.photosmanager.WebServer.fetchUsersInfo
 import spray.json._
+import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
@@ -39,9 +40,9 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
     val s3Manager = new S3Manager()
 
     println("waiting")
-    Thread.sleep(45000)
+    //    Thread.sleep(45000)
 
-    val cluster = CouchbaseCluster.create("couchbase")
+    val cluster = CouchbaseCluster.create("localhost")
     cluster.authenticate("Administrator", "adminadmin")
 
     // Connect to the bucket and open it
@@ -58,8 +59,9 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
     System.out.println("Couchbase is the best database in the " + found.content.getString("hello"))
 
 
-    val route =
+    val route = cors() {
       pathPrefix("photos") {
+        println("photos calledd")
         get {
           extractRequest { request =>
             onSuccess(fetchUsersInfo(request)) { result =>
@@ -74,7 +76,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
               val friendsMap = result.friends.map(dto => dto.id -> dto).toMap
 
               val dtos = parsed.map { photoData =>
-                val comments = photoData.comments.map{ commentData =>
+                val comments = photoData.comments.map { commentData =>
                   CommentDto(friendsMap(commentData.userId), commentData.commentValue, commentData.date)
                 }
                 val likes = photoData.likes.map(id => friendsMap(id))
@@ -87,7 +89,9 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
           }
         } ~
           post {
+            println("post called")
             extractRequest { request =>
+              println("request extracted")
               uploadedFile("photo") {
                 case (metadata, file) =>
 
@@ -100,7 +104,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
 
                     val outFile = new File(s"photo:${nextId.content()}")
 
-                    new FileOutputStream(outFile).getChannel().transferFrom(new FileInputStream(file).getChannel, 0, Long.MaxValue )
+                    new FileOutputStream(outFile).getChannel().transferFrom(new FileInputStream(file).getChannel, 0, Long.MaxValue)
                     file.delete()
 
                     s3Manager.upload(outFile, s"photo-${nextId.content()}.jpg")
@@ -150,32 +154,22 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
               }
             }
           }
-        //TODO this will be in Users microservice
-      } ~
-        pathPrefix("users") {
-          path("info") {
-            get {
-              extractRequest { request =>
-                complete(UserInfoDto(1, Seq(FriendDto(1, "pawel", "Gizka"), FriendDto(2, "jan", "kowalski"))))
-              }
-            }
-          }
-        }
+      }
+    }
 
-    val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 8080)
+    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
 
     println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
   }
 
   def fetchUsersInfo(request: HttpRequest): Future[UserInfoDto] = {
-    if (request.headers.map(_.name()).contains("username") && request.headers.map(_.name()).contains("password")) {
-      //TODO tu powinien byc adress mikroserwisu urzytkownikow
-      Http().singleRequest(HttpRequest(HttpMethods.GET, uri = "http://localhost:8080/users/info", headers = request.headers))
+    if (request.headers.map(_.name()).contains("Authentication")) {
+      Http().singleRequest(HttpRequest(HttpMethods.GET, uri = "http://localhost:8000/get_user_info/", headers = request.headers))
         .flatMap{response =>
           response.entity.toStrict(FiniteDuration(5, TimeUnit.SECONDS)).map(_.data.utf8String.parseJson.convertTo[UserInfoDto])
         }
     } else {
-      Future.failed(new Exception("No login and password in request"))
+      Future.failed(new Exception("No Authentication header"))
     }
   }
 }

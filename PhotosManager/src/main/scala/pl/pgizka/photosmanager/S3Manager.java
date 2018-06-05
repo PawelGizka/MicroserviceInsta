@@ -16,7 +16,7 @@ public class S3Manager {
     private final String bucketName = "jnpprojectphotos";
 
     public S3Manager() {
-        s3 = new AmazonS3Client(new BasicAWSCredentials("access key", "secret key"));
+        s3 = new AmazonS3Client(new BasicAWSCredentials("AKIAJXHTICHVRJCFSQFA", "QT8MqzVV+MgSQYCLHRrHoTMTWM4oQWLBNvp7CNK6"));
 
     }
 
@@ -42,4 +42,3 @@ public class S3Manager {
 
 
 }
-

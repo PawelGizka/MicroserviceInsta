@@ -13,7 +13,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.12" % Test,
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.337",
   "com.couchbase.client" % "java-client" % "2.5.5",
-  "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.1"
+  "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.1",
+  "ch.megard" %% "akka-http-cors" % "0.3.0"
 )
 
 // No need to run tests while building jar

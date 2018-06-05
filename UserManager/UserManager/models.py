@@ -14,9 +14,5 @@ class Connection(models.Model):
         unique_together = ('follower', 'following',)
 
 class Token(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    text = models.TextField()
-    expire = models.DateTimeField()
-
-    def isExpired(self):
-        return datetime.now() > self.expire
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    token = models.TextField()

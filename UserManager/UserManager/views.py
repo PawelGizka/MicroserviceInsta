@@ -1,7 +1,10 @@
+import random
+import string
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden, HttpResponseRedirect, HttpResponseBadRequest
-from .models import Connection
+from .models import Connection, Token
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.contrib.auth import login, authenticate, logout
@@ -41,6 +44,7 @@ def do_login(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
+            createToken(user)
             return HttpResponseRedirect(reverse('main_friends'))
         else:
             return HttpResponseRedirect(reverse('incorrect_login_form'))
@@ -58,6 +62,7 @@ def do_register(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
+            createToken(user)
             return HttpResponseRedirect(reverse('main_friends'))
         else:
             return HttpResponseRedirect(reverse('incorrect_register_form'))
@@ -67,6 +72,10 @@ def do_register(request):
 @login_required
 def main_friends(request):
     return render(request, 'main_friends.html')
+
+@login_required
+def main_upload(request):
+    return render(request, 'main_upload.html', {'token': fetchToken(request.user)})
 
 @login_required
 def get_friends(request):
@@ -99,10 +108,29 @@ def follow(request):
 
 @csrf_exempt
 def get_followings_request(request):
-    if 'HTTP_USERNAME' not in request.META or 'HTTP_PASSWORD' not in request.META:
+    logger.info("before")
+
+    if 'HTTP_AUTHENTICATION' not in request.META:
         raise PermissionDenied
-    if authenticate(username=request.META['HTTP_USERNAME'], password=request.META['HTTP_PASSWORD']) is None:
-        raise PermissionDenied
-    user = User.objects.get(username=request.META['HTTP_USERNAME'])
-    followings = Connection.objects.filter(follower=user).values('following')
-    return JsonResponse({ 'followings': list(followings) })
+
+    logger.info("after")
+
+    user = fetchUser(request.META['HTTP_AUTHENTICATION'])
+    connections = Connection.objects.filter(follower=user)
+    followingsParsed = []
+    for connection in connections:
+        followingsParsed.append({'id': connection.following.id, 'username': connection.following.username})
+
+    return JsonResponse({ 'userId': user.id, 'friends': list(followingsParsed) })
+
+def createToken(user):
+    alreadyExistingToken = Token.objects.filter(user=user)
+    alreadyExistingToken.delete()
+    tokenString = str(user.id) + '-' + ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(50))
+    Token.objects.create(user=user, token=tokenString)
+
+def fetchToken(user):
+    return Token.objects.filter(user=user).first().token
+
+def fetchUser(token):
+    return Token.objects.filter(token__exact=token).first().user

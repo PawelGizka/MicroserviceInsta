@@ -30,4 +30,6 @@ urlpatterns = [
     path('logout', views.do_logout, name='logout'),
     path('ajax/get_friends/', views.get_friends, name='get_friends'),
     path('ajax/follow/', views.follow, name='follow'),
+    path('main_upload', views.main_upload, name='main_upload'),
+    path('get_user_info/', views.get_followings_request, name='get_followings_request'),
 ]
