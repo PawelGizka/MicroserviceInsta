@@ -37,13 +37,14 @@ function uploadPhoto() {
         contentType: false,  // tell jQuery not to set contentType
         success: function () {
             alert("Data Uploaded: ");
+            location.href="main_photos"
         },
         error: function(jqXHR, textStatus, errorThrown) {
             // Handle errors here
             console.log('ERRORS: ' + textStatus);
             console.log(jqXHR)
             console.log(errorThrown)
-            // STOP LOADING SPINNER
+            location.href="main_photos"
         }
     });
 }

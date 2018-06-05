@@ -36,11 +36,11 @@ function displayPhotos(photos) {
         var uploadedTime = new Date(photo.date).toLocaleTimeString();
         var uploadedDate = new Date(photo.date).toLocaleDateString();
 
-        $("#content ul").append(`
-                <li>
+        $("#content").append(`
+                <div class="div_image">
                     <h2>${photo.owner.username} on ${uploadedTime} ${uploadedDate}</h2>
-                    <img src="${photo.photoPath}">
-                </li>
+                    <img src="${photo.photoPath}" alt="Image Unavailable">
+                </div>
         `);
     }
 }

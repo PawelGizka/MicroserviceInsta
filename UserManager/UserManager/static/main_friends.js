@@ -1,4 +1,6 @@
 $().ready(function() {
+    console.log("dziala")
+
     display()
 });
 
@@ -19,22 +21,43 @@ function follow(id, follow) {
 
 function display() {
     $.get('ajax/get_friends/', function(res) {
+        console.log('chat messages received');
         console.log(res)
 
-        $("#content ul").empty();
+        $("#content").empty();
 
         for (var i in res.users) {
             var user = res.users[i];
             var username = user.username;
-            console.log(user.follows);
+
             if (user.follows) {
-                $("#content ul").append(`<li>${user.username} <button onclick="follow(${user.id})">Stop following</button></li>`);
+                $("#content").append(`
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <h2>${user.username}</h2>
+                                </div>
+                                
+                                <div class="col-sm-6">
+                                    <button class="btn btn-primary " style="font-size: 30px" onclick="follow(${user.id})">Stop following</button>
+                                </div>
+                            </div>
+                `);
             } else {
-                $("#content ul").append(`<li>${user.username} <button onclick="follow(${user.id})">Follow</button></li>`);
+                $("#content").append(`
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <h2>${user.username}</h2>
+                                </div>
+                                
+                                <div class="col-sm-6">
+                                    <button class="btn btn-primary " style="font-size: 30px" onclick="follow(${user.id})">Follow</button>
+                                </div>
+                            </div>
+                `);
             }
         }
 
     }).fail(function() {
-        console.log('retrieving friends failed');
+        console.log('retrieving freinds messages failed');
     });
 }
