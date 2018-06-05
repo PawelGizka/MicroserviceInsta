@@ -78,6 +78,10 @@ def main_upload(request):
     return render(request, 'main_upload.html', {'token': fetchToken(request.user)})
 
 @login_required
+def main_photos(request):
+    return render(request, 'main_photos.html', {'token': fetchToken(request.user)})
+
+@login_required
 def get_friends(request):
     users = User.objects.all()
     usersParsed = []

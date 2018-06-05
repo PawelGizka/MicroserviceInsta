@@ -32,4 +32,5 @@ urlpatterns = [
     path('ajax/follow/', views.follow, name='follow'),
     path('main_upload', views.main_upload, name='main_upload'),
     path('get_user_info/', views.get_followings_request, name='get_followings_request'),
+    path('main_photos', views.main_photos, name='main_photos'),
 ]

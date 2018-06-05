@@ -65,11 +65,11 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
         get {
           extractRequest { request =>
             onSuccess(fetchUsersInfo(request)) { result =>
-
+              println(s"get photos fetched user info ${result}")
               val ids =
                 if (result.friends.isEmpty) ""
                 else result.friends.map(_.id).tail.foldLeft(result.friends.get(0).id.toString)(_ + ", " + _)
-              println(ids)
+              println(s"ids: ${ids}")
               val query = s"select id, comments, date, likes, ownerId  from photosmanager where ownerId in [$ids] order by date desc;"
               val parsed = bucket.query(N1qlQuery.simple(query)).allRows().toList.map(_.value().toString.parseJson.convertTo[Photo])
 
@@ -81,8 +81,10 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
                 }
                 val likes = photoData.likes.map(id => friendsMap(id))
                 val photoPath = s"https://s3.eu-west-2.amazonaws.com/jnpprojectphotos/photo-${photoData.id}.jpg"
-                PhotoDto(photoData.id, photoData.ownerId, photoData.date, photoPath, likes, comments)
+                PhotoDto(photoData.id, friendsMap(photoData.ownerId), photoData.date, photoPath, likes, comments)
               }
+
+              println(s"dtos: ${dtos}")
 
               complete(dtos)
             }
@@ -99,7 +101,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
 
                     val nextId = bucket.counter("photosCounter", 1, 0)
                     val photoId = "photo:" + nextId.content()
-                    val photo = Photo(nextId.content(), 2, new Date().getTime, List(), List())
+                    val photo = Photo(nextId.content(), userInfo.userId, new Date().getTime, List(), List())
                     bucket.upsert(JsonDocument.create(photoId, JsonObject.fromJson(photo.toJson.toString())))
 
                     val outFile = new File(s"photo:${nextId.content()}")
@@ -108,6 +110,8 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
                     file.delete()
 
                     s3Manager.upload(outFile, s"photo-${nextId.content()}.jpg")
+
+                    println("File uploaded")
 
                     complete(StatusCodes.OK)
                   }

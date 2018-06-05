@@ -9,7 +9,7 @@ object Dtos {
 
   case class CommentDto(friend: FriendDto, commentValue: String, date: Long)
 
-  case class PhotoDto(id: Long, ownerId: Int, date: Long, photoPath: String, likes: Seq[FriendDto], comments: Seq[CommentDto])
+  case class PhotoDto(id: Long, owner: FriendDto, date: Long, photoPath: String, likes: Seq[FriendDto], comments: Seq[CommentDto])
 
   case class LikePostDto(photoId: Long)
   case class CommentPostDto(photoId: Long, commentValue: String)
