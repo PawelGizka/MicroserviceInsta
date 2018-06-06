@@ -19,6 +19,7 @@ object S3 {
 
     import com.rabbitmq.client.ConnectionFactory
     val factory = new ConnectionFactory
+    factory.setHost("rabbitmq")
     val conn = factory.newConnection
 
     val channel = conn.createChannel

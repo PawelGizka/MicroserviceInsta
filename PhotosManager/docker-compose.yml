@@ -1,5 +1,13 @@
 version: "3"
 services:
+  rabbitmq:
+    image: rabbitmq-custom
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - webnet
+
   couchbase:
     image: couchbase-custom
     ports:
@@ -8,17 +16,20 @@ services:
       - 8083:8093
     networks:
       - webnet
-  web:
-    # replace username/repo:tag with your name and image details
+
+
+
+  photo-service:
     image: photos-app
     ports:
       - 8080:8080
     depends_on:
       - couchbase
+      - rabbitmq
     networks:
       - webnet
 
 networks:
   webnet:
-    driver: bridge
+    external: true
 

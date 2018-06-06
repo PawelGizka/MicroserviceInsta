@@ -45,9 +45,9 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
   def main(args: Array[String]) {
 
     println("waiting")
-    //    Thread.sleep(45000)
+    Thread.sleep(45000)
 
-    val cluster = CouchbaseCluster.create("localhost")
+    val cluster = CouchbaseCluster.create("couchbase")
     cluster.authenticate("Administrator", "adminadmin")
 
     // Connect to the bucket and open it
@@ -67,6 +67,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
 
     import com.rabbitmq.client.ConnectionFactory
     val factory = new ConnectionFactory
+    factory.setHost("rabbitmq")
     val conn = factory.newConnection
 
     val channel = conn.createChannel
@@ -180,7 +181,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
       }
     }
 
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 8080)
 
     println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
     StdIn.readLine()
@@ -188,7 +189,7 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
 
   def fetchUsersInfo(request: HttpRequest): Future[UserInfoDto] = {
     if (request.headers.map(_.name()).contains("Authentication")) {
-      Http().singleRequest(HttpRequest(HttpMethods.GET, uri = "http://localhost:8000/get_user_info/", headers = request.headers))
+      Http().singleRequest(HttpRequest(HttpMethods.GET, uri = "http://web:8000/get_user_info/", headers = request.headers))
         .flatMap{response =>
           response.entity.toStrict(FiniteDuration(5, TimeUnit.SECONDS)).map(_.data.utf8String.parseJson.convertTo[UserInfoDto])
         }
