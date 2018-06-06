@@ -63,8 +63,6 @@ object WebServer extends Directives with JsonDataSupport with JsonDtosSupport {
     val found = bucket.get("helloworld")
     System.out.println("Couchbase is the best database in the " + found.content.getString("hello"))
 
-    S3.setup()
-
     import com.rabbitmq.client.ConnectionFactory
     val factory = new ConnectionFactory
     factory.setHost("rabbitmq")
